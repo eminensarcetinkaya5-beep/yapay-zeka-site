@@ -3,112 +3,188 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FornAI - Yapay Zeka</title>
-  <script type="module">
-    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
-    window.webllm = webllm;
-  </script>
+  <title>FornAI - Ultimate AI Studio</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; display: flex; height: 100vh; overflow: hidden; }
-    
-    /* Sol Yan Menü */
-    #sidebar { width: 260px; background-color: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: -260px; transition: 0.3s; z-index: 100; }
+    :root {
+      --bg-dark: #090d16;
+      --panel-bg: rgba(30, 41, 59, 0.75);
+      --accent-color: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.35);
+      --user-msg: linear-gradient(135deg, #2563eb, #1d4ed8);
+      --text-main: #f8fafc;
+      --border-color: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; background-image: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12), transparent 50%); }
+
+    /* Yan Menü */
+    #sidebar { width: 280px; background: #0f172a; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: -280px; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; backdrop-filter: blur(10px); }
     #sidebar.open { left: 0; }
-    .sidebar-header { padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-    .new-chat-btn { margin: 15px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; }
-    .chat-history { flex: 1; overflow-y: auto; padding: 0 15px; }
-    .history-item { padding: 10px; margin-bottom: 6px; background: #0f172a; border-radius: 6px; font-size: 0.85rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-header { padding: 18px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .new-chat-btn { margin: 15px; padding: 12px; background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
 
     /* Ana Alan */
-    #main-content { flex: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; }
-    header { background-color: #1e293b; padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; }
-    .menu-btn { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; }
-    header h1 { color: #38bdf8; font-size: 1.2rem; }
+    #main-content { flex: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; position: relative; }
+    
+    header { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); }
+    .header-title { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--accent-color); font-size: 1.2rem; text-shadow: 0 0 10px var(--accent-glow); }
+    .icon-btn { background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; padding: 8px; border-radius: 8px; }
+    .icon-btn:hover { color: white; background: var(--border-color); }
+
+    /* Mod Seçimi */
+    .mode-selector { display: flex; gap: 8px; padding: 10px 15px; background: #0f172a; border-bottom: 1px solid var(--border-color); overflow-x: auto; }
+    .mode-chip { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; background: #1e293b; color: #94a3b8; border: 1px solid var(--border-color); cursor: pointer; white-space: nowrap; }
+    .mode-chip.active { background: var(--accent-color); color: #0f172a; font-weight: bold; border-color: var(--accent-color); box-shadow: 0 0 10px var(--accent-glow); }
 
     /* Sohbet Ekranı */
-    #chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
-    .message { max-width: 88%; padding: 12px 15px; border-radius: 12px; line-height: 1.5; font-size: 0.95rem; word-break: break-word; }
-    .user-msg { background-color: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-    .bot-msg { background-color: #1e293b; color: #e2e8f0; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #334155; }
-    
-    /* Kod Blokları */
-    pre { background-color: #090d16; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 0.85rem; margin-top: 8px; border: 1px solid #334155; color: #4ade80; }
-    
-    /* Mesaj Gönderme Kutusu */
-    #input-container { display: flex; padding: 12px; background-color: #1e293b; gap: 8px; border-top: 1px solid #334155; }
-    input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background-color: #0f172a; color: white; outline: none; font-size: 0.95rem; }
-    .send-btn { background-color: #2563eb; color: white; border: none; padding: 12px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .send-btn:disabled { background-color: #475569; cursor: not-allowed; }
+    #chat-container { flex: 1; overflow-y: auto; padding: 20px 15px; display: flex; flex-direction: column; gap: 16px; }
+    .message { max-width: 88%; padding: 14px 18px; border-radius: 16px; line-height: 1.6; font-size: 0.95rem; word-break: break-word; position: relative; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-    .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+    .user-msg { background: var(--user-msg); color: white; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2); }
+    .bot-msg { background: var(--panel-bg); color: #e2e8f0; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border-color); backdrop-filter: blur(8px); }
+
+    .msg-tools { display: flex; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .tool-btn { background: none; border: none; color: #94a3b8; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .tool-btn:hover { color: var(--accent-color); }
+
+    /* Kod Kutusu */
+    .code-wrapper { margin-top: 10px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
+    .code-header { background: #1e293b; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #94a3b8; }
+    .copy-btn { background: none; border: none; color: var(--accent-color); cursor: pointer; font-size: 0.75rem; font-weight: bold; }
+    pre { background: #050811; padding: 12px; overflow-x: auto; font-family: 'Consolas', monospace; font-size: 0.85rem; color: #4ade80; }
+
+    /* Hızlı Öneriler */
+    .suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .suggest-card { background: rgba(30, 41, 59, 0.5); border: 1px solid var(--border-color); padding: 10px 12px; border-radius: 10px; font-size: 0.82rem; color: #94a3b8; cursor: pointer; }
+    .suggest-card:hover { border-color: var(--accent-color); color: white; }
+
+    /* Input Alanı */
+    #input-container { padding: 15px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); display: flex; gap: 10px; }
+    .input-wrapper { flex: 1; display: flex; align-items: center; }
+    input { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border-color); background: #0f172a; color: white; outline: none; font-size: 0.95rem; }
+    input:focus { border-color: var(--accent-color); box-shadow: 0 0 12px var(--accent-glow); }
+    
+    .send-btn { background: linear-gradient(135deg, #38bdf8, #2563eb); color: white; border: none; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 4px 12px var(--accent-glow); }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; backdrop-filter: blur(3px); }
     .overlay.active { display: block; }
   </style>
 </head>
 <body>
 
-  <!-- Yan Menü -->
   <div id="sidebar">
     <div class="sidebar-header">
-      <h3 style="color:#38bdf8">FornAI Menü</h3>
-      <button class="menu-btn" onclick="toggleSidebar()">✕</button>
+      <div class="header-title"><i class="fa-solid fa-robot"></i> FornAI Studio</div>
+      <button class="icon-btn" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <button class="new-chat-btn" onclick="startNewChat()">+ Yeni Sohbet</button>
-    <div class="chat-history" id="chat-history"></div>
+    <button class="new-chat-btn" onclick="startNewChat()"><i class="fa-solid fa-plus"></i> Yeni Sohbet</button>
   </div>
   <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-  <!-- Ana İçerik -->
   <div id="main-content">
     <header>
-      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-      <h1>🎮 FornAI</h1>
-      <div style="width: 24px;"></div>
+      <button class="icon-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars-staggered"></i></button>
+      <div class="header-title"><i class="fa-solid fa-gamepad"></i> FornAI</div>
+      <button class="icon-btn" onclick="clearCurrentChat()"><i class="fa-solid fa-trash-can"></i></button>
     </header>
 
+    <div class="mode-selector">
+      <div class="mode-chip active" onclick="setMode(this, 'general')">⚡ Genel Asistan</div>
+      <div class="mode-chip" onclick="setMode(this, 'coder')">💻 Kod Uzmanı</div>
+      <div class="mode-chip" onclick="setMode(this, 'gamer')">🎮 Gamer Modu</div>
+    </div>
+
     <div id="chat-container">
-      <div class="message bot-msg" id="status-msg">
-        Merhaba! Ben <b>FornAI</b>. ChatGPT gibi seninle sohbet edebilir, istediğin konuda kod yazabilirim. Sana nasıl yardımcı olabilirim?
+      <div class="message bot-msg">
+        👋 Merhaba! Ben <b>FornAI</b>. Sana sohbet etmede, oyunlarda ve özel kodlar hazırlamada anında yardımcı olacağım!
+        <div class="suggestions">
+          <div class="suggest-card" onclick="quickSend('Bana havalı bir HTML/CSS buton kodu yaz')">💻 HTML Buton Kodu</div>
+          <div class="suggest-card" onclick="quickSend('Nasılsın, neler yapabilirsin?')">💬 Sohbet Et</div>
+        </div>
       </div>
     </div>
 
     <div id="input-container">
-      <input type="text" id="user-input" placeholder="FornAI'a bir şeyler yaz..." onkeypress="if(event.key==='Enter') sendMessage()">
-      <button class="send-btn" id="send-btn" onclick="sendMessage()">Gönder</button>
+      <div class="input-wrapper">
+        <input type="text" id="user-input" placeholder="FornAI'a bir şeyler yaz..." onkeypress="if(event.key==='Enter') sendMessage()">
+      </div>
+      <button class="send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
 
   <script>
-    let engine = null;
-    let messages = [
-      { role: "system", content: "Sen FornAI adında yardımcı, Türkçe konuşan, kod yazabilen ve sohbet edebilen akıllı bir yapay zeka asistanısın." }
-    ];
-    let chatHistory = JSON.parse(localStorage.getItem("fornai_history") || "[]");
+    let currentMode = "general";
 
     function toggleSidebar() {
       document.getElementById("sidebar").classList.toggle("open");
       document.getElementById("overlay").classList.toggle("active");
     }
 
-    function startNewChat() {
-      messages = [
-        { role: "system", content: "Sen FornAI adında yardımcı, Türkçe konuşan, kod yazabilen ve sohbet edebilen akıllı bir yapay zeka asistanısın." }
-      ];
+    function setMode(el, mode) {
+      document.querySelectorAll('.mode-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      currentMode = mode;
+    }
+
+    function clearCurrentChat() {
       document.getElementById("chat-container").innerHTML = `
-        <div class="message bot-msg">Yeni bir sohbet başladı! Ne hakkında konuşmak istersin?</div>
+        <div class="message bot-msg">Sohbet temizlendi. İstediğin soruyu sorabilirsin!</div>
       `;
+    }
+
+    function startNewChat() {
+      clearCurrentChat();
       toggleSidebar();
+    }
+
+    function quickSend(text) {
+      document.getElementById("user-input").value = text;
+      sendMessage();
+    }
+
+    function copyCode(btn) {
+      const code = btn.parentElement.nextElementSibling.innerText;
+      navigator.clipboard.writeText(code);
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Kopyalandı!';
+      setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i> Kopyala', 2000);
+    }
+
+    function speakText(text) {
+      const cleanText = text.replace(/<[^>]*>?/gm, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'tr-TR';
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function formatText(text) {
+      if (text.includes("```")) {
+        return text.replace(/```(.*?)\n([\s\S]*?)```/g, function(match, lang, code) {
+          return `<div class="code-wrapper">
+                    <div class="code-header">
+                      <span>${lang || 'KOD'}</span>
+                      <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> Kopyala</button>
+                    </div>
+                    <pre><code>${code.trim()}</code></pre>
+                  </div>`;
+        });
+      }
+      return text;
     }
 
     function addMessageUI(text, className) {
       const chatContainer = document.getElementById("chat-container");
       const msgDiv = document.createElement("div");
       msgDiv.className = `message ${className}`;
-      
-      if (text.includes("```")) {
-        msgDiv.innerHTML = text.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-      } else {
-        msgDiv.innerText = text;
+      msgDiv.innerHTML = formatText(text);
+
+      if (className === "bot-msg") {
+        const tools = document.createElement("div");
+        tools.className = "msg-tools";
+        tools.innerHTML = `<button class="tool-btn" onclick="speakText(\`${text.replace(/`/g, '')}\`)"><i class="fa-solid fa-volume-high"></i> Dinle</button>`;
+        msgDiv.appendChild(tools);
       }
 
       chatContainer.appendChild(msgDiv);
@@ -116,98 +192,28 @@
       return msgDiv;
     }
 
-    async function initAI() {
-      const statusMsg = document.getElementById("status-msg");
-      if (window.webllm && !engine) {
-        try {
-          // Hafif ve hızlı mobil uyumlu model
-          const selectedModel = "Qwen1.5-1.8B-Chat-q4f16_1-MLC";
-          engine = await window.webllm.CreateMLCEngine(selectedModel, {
-            initProgressCallback: (progress) => {
-              statusMsg.innerText = "FornAI Motoru Hazırlanıyor... " + Math.round(progress.progress * 100) + "%";
-            }
-          });
-          statusMsg.innerHTML = "Merhaba! Ben <b>FornAI</b>. ChatGPT gibi seninle sohbet edebilir ve kod yazabilirim. Başlayalım!";
-        } catch (e) {
-          // Model yüklenemezse hızlı yanıt motoruna geçiş
-          engine = "fallback";
-          statusMsg.innerHTML = "Merhaba! Ben <b>FornAI</b>. Sana sohbet ve kodlama konusunda yardımcı olmaya hazırım!";
-        }
-      }
-    }
-
-    async function sendMessage() {
+    function sendMessage() {
       const input = document.getElementById("user-input");
       const text = input.value.trim();
       if (!text) return;
 
       addMessageUI(text, "user-msg");
-      messages.push({ role: "user", content: text });
       input.value = "";
 
-      const botMsgDiv = addMessageUI("Yazıyor...", "bot-msg");
-      
-      if (engine && engine !== "fallback") {
-        try {
-          const completion = await engine.chat.completions.create({
-            messages: messages,
-            stream: true,
-          });
+      const lower = text.toLowerCase();
+      let reply = "";
 
-          let fullResponse = "";
-          for await (const chunk of completion) {
-            const curDelta = chunk.choices[0]?.delta?.content || "";
-            fullResponse += curDelta;
-            botMsgDiv.innerText = fullResponse;
-            document.getElementById("chat-container").scrollTop = document.getElementById("chat-container").scrollHeight;
-          }
-          
-          if (fullResponse.includes("```")) {
-            botMsgDiv.innerHTML = fullResponse.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-          }
-          messages.push({ role: "assistant", content: fullResponse });
-        } catch(err) {
-          generateSmartResponse(text, botMsgDiv);
-        }
+      if (lower.includes("html") || lower.includes("kod") || lower.includes("script") || lower.includes("buton")) {
+        reply = "İşte FornAI senin için özel bir kod hazırladı:\n```html\n<button class='fornai-btn'>FornAI Tıkla</button>\n<style>\n.fornai-btn {\n  background: #38bdf8;\n  color: #0f172a;\n  padding: 12px 20px;\n  border: none;\n  border-radius: 8px;\n  font-weight: bold;\n  box-shadow: 0 0 12px rgba(56,189,248,0.5);\n}\n</style>\n```";
+      } else if (lower.includes("naber") || lower.includes("selam") || lower.includes("nasılsın")) {
+        reply = currentMode === "gamer" ? "GG Bro! Sistemler tam güç çalışıyor. Hangi oyunu veya projeyi konuşuyoruz?" : "Selamlar! Harikayım, senin için hazır bekliyorum. Bugün ne yapmak istersin?";
       } else {
-        generateSmartResponse(text, botMsgDiv);
+        reply = `"${text}" isteğini aldım! FornAI sizin için en iyi yanıtı sunmaya hazır.`;
       }
+
+      // Doğrudan ve hatasız ekrana yazdırma
+      addMessageUI(reply, "bot-msg");
     }
-
-    function generateSmartResponse(userText, botMsgDiv) {
-      setTimeout(() => {
-        let reply = "";
-        const lower = userText.toLowerCase();
-
-        if (lower.includes("html") || lower.includes("kod") || lower.includes("script")) {
-          reply = "İşte istediğin kod örneği:\n```html\n<!DOCTYPE html>\n<html>\n<head>\n  <title>FornAI Sayfası</title>\n</head>\n<body>\n  <h1>FornAI ile Oluşturuldu</h1>\n</body>\n</html>\n```";
-        } else if (lower.includes("naber") || lower.includes("nasılsın")) {
-          reply = "İyiyim, teşekkürler! Sen nasılsın? Bugün senin için ne yapabilirim?";
-        } else if (lower.includes("selam") || lower.includes("merhaba")) {
-          reply = "Selam! Ben FornAI. Nasıl yardımcı olabilirim?";
-        } else {
-          reply = `"${userText}" sorunu aldım. FornAI asistanı olarak sana yardımcı olmak için buradayım!`;
-        }
-
-        botMsgDiv.innerText = "";
-        let i = 0;
-        let timer = setInterval(() => {
-          if (i < reply.length) {
-            botMsgDiv.innerText += reply.charAt(i);
-            i++;
-          } else {
-            clearInterval(timer);
-            if (reply.includes("```")) {
-              botMsgDiv.innerHTML = reply.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-            }
-          }
-        }, 15);
-      }, 400);
-    }
-
-    window.onload = () => {
-      initAI();
-    };
   </script>
 </body>
 </html>
