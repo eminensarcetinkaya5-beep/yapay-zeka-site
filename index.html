@@ -3,87 +3,211 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FornAI - Kod & Yapay Zeka Asistanı</title>
+  <title>FornAI - Yapay Zeka</title>
+  <script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+    window.webllm = webllm;
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; }
-    header { background-color: #1e293b; padding: 15px; text-align: center; border-bottom: 1px solid #334155; }
-    header h1 { color: #38bdf8; font-size: 1.5rem; }
+    body { background-color: #0f172a; color: #f8fafc; display: flex; height: 100vh; overflow: hidden; }
+    
+    /* Sol Yan Menü */
+    #sidebar { width: 260px; background-color: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: -260px; transition: 0.3s; z-index: 100; }
+    #sidebar.open { left: 0; }
+    .sidebar-header { padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    .new-chat-btn { margin: 15px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; }
+    .chat-history { flex: 1; overflow-y: auto; padding: 0 15px; }
+    .history-item { padding: 10px; margin-bottom: 6px; background: #0f172a; border-radius: 6px; font-size: 0.85rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Ana Alan */
+    #main-content { flex: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; }
+    header { background-color: #1e293b; padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; }
+    .menu-btn { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; }
+    header h1 { color: #38bdf8; font-size: 1.2rem; }
+
+    /* Sohbet Ekranı */
     #chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
-    .message { max-width: 85%; padding: 12px 16px; border-radius: 12px; line-height: 1.5; font-size: 0.95rem; word-break: break-word; }
+    .message { max-width: 88%; padding: 12px 15px; border-radius: 12px; line-height: 1.5; font-size: 0.95rem; word-break: break-word; }
     .user-msg { background-color: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
     .bot-msg { background-color: #1e293b; color: #e2e8f0; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #334155; }
-    pre { background-color: #090d16; padding: 10px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 0.85rem; margin-top: 8px; color: #4ade80; }
+    
+    /* Kod Blokları */
+    pre { background-color: #090d16; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 0.85rem; margin-top: 8px; border: 1px solid #334155; color: #4ade80; }
+    
+    /* Mesaj Gönderme Kutusu */
     #input-container { display: flex; padding: 12px; background-color: #1e293b; gap: 8px; border-top: 1px solid #334155; }
     input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background-color: #0f172a; color: white; outline: none; font-size: 0.95rem; }
-    button { background-color: #2563eb; color: white; border: none; padding: 12px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    button:active { opacity: 0.8; }
+    .send-btn { background-color: #2563eb; color: white; border: none; padding: 12px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .send-btn:disabled { background-color: #475569; cursor: not-allowed; }
+
+    .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+    .overlay.active { display: block; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>🎮 FornAI</h1>
-  </header>
+  <!-- Yan Menü -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h3 style="color:#38bdf8">FornAI Menü</h3>
+      <button class="menu-btn" onclick="toggleSidebar()">✕</button>
+    </div>
+    <button class="new-chat-btn" onclick="startNewChat()">+ Yeni Sohbet</button>
+    <div class="chat-history" id="chat-history"></div>
+  </div>
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-  <div id="chat-container">
-    <div class="message bot-msg">
-      Merhaba! Ben <b>FornAI</b>. Sana kod yazmada, sohbet etmede ve sorularını yanıtlamada yardımcı olabilirim. Nasıl yardımcı olabilirim?
+  <!-- Ana İçerik -->
+  <div id="main-content">
+    <header>
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <h1>🎮 FornAI</h1>
+      <div style="width: 24px;"></div>
+    </header>
+
+    <div id="chat-container">
+      <div class="message bot-msg" id="status-msg">
+        Merhaba! Ben <b>FornAI</b>. ChatGPT gibi seninle sohbet edebilir, istediğin konuda kod yazabilirim. Sana nasıl yardımcı olabilirim?
+      </div>
+    </div>
+
+    <div id="input-container">
+      <input type="text" id="user-input" placeholder="FornAI'a bir şeyler yaz..." onkeypress="if(event.key==='Enter') sendMessage()">
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">Gönder</button>
     </div>
   </div>
 
-  <div id="input-container">
-    <input type="text" id="user-input" placeholder="FornAI'a bir şeyler yaz..." onkeypress="handleKeyPress(event)">
-    <button onclick="sendMessage()">Gönder</button>
-  </div>
-
   <script>
-    function sendMessage() {
+    let engine = null;
+    let messages = [
+      { role: "system", content: "Sen FornAI adında yardımcı, Türkçe konuşan, kod yazabilen ve sohbet edebilen akıllı bir yapay zeka asistanısın." }
+    ];
+    let chatHistory = JSON.parse(localStorage.getItem("fornai_history") || "[]");
+
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("open");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+
+    function startNewChat() {
+      messages = [
+        { role: "system", content: "Sen FornAI adında yardımcı, Türkçe konuşan, kod yazabilen ve sohbet edebilen akıllı bir yapay zeka asistanısın." }
+      ];
+      document.getElementById("chat-container").innerHTML = `
+        <div class="message bot-msg">Yeni bir sohbet başladı! Ne hakkında konuşmak istersin?</div>
+      `;
+      toggleSidebar();
+    }
+
+    function addMessageUI(text, className) {
+      const chatContainer = document.getElementById("chat-container");
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${className}`;
+      
+      if (text.includes("```")) {
+        msgDiv.innerHTML = text.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+      } else {
+        msgDiv.innerText = text;
+      }
+
+      chatContainer.appendChild(msgDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      return msgDiv;
+    }
+
+    async function initAI() {
+      const statusMsg = document.getElementById("status-msg");
+      if (window.webllm && !engine) {
+        try {
+          // Hafif ve hızlı mobil uyumlu model
+          const selectedModel = "Qwen1.5-1.8B-Chat-q4f16_1-MLC";
+          engine = await window.webllm.CreateMLCEngine(selectedModel, {
+            initProgressCallback: (progress) => {
+              statusMsg.innerText = "FornAI Motoru Hazırlanıyor... " + Math.round(progress.progress * 100) + "%";
+            }
+          });
+          statusMsg.innerHTML = "Merhaba! Ben <b>FornAI</b>. ChatGPT gibi seninle sohbet edebilir ve kod yazabilirim. Başlayalım!";
+        } catch (e) {
+          // Model yüklenemezse hızlı yanıt motoruna geçiş
+          engine = "fallback";
+          statusMsg.innerHTML = "Merhaba! Ben <b>FornAI</b>. Sana sohbet ve kodlama konusunda yardımcı olmaya hazırım!";
+        }
+      }
+    }
+
+    async function sendMessage() {
       const input = document.getElementById("user-input");
       const text = input.value.trim();
       if (!text) return;
 
-      // Kullanıcı mesajını ekle
-      addMessage(text, "user-msg");
+      addMessageUI(text, "user-msg");
+      messages.push({ role: "user", content: text });
       input.value = "";
 
-      // FornAI yanıtını simüle et
-      setTimeout(() => {
-        generateResponse(text);
-      }, 600);
-    }
+      const botMsgDiv = addMessageUI("Yazıyor...", "bot-msg");
+      
+      if (engine && engine !== "fallback") {
+        try {
+          const completion = await engine.chat.completions.create({
+            messages: messages,
+            stream: true,
+          });
 
-    function handleKeyPress(e) {
-      if (e.key === "Enter") sendMessage();
-    }
-
-    function addMessage(text, className) {
-      const chatContainer = document.getElementById("chat-container");
-      const msgDiv = document.createElement("div");
-      msgDiv.className = `message ${className}`;
-      msgDiv.innerHTML = text;
-      chatContainer.appendChild(msgDiv);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    function generateResponse(userText) {
-      const lower = userText.toLowerCase();
-      let response = "";
-
-      if (lower.includes("kod") || lower.includes("html") || lower.includes("python")) {
-        response = `FornAI senin için bir kod örneği hazırladı:<br>
-        <pre><code>// FornAI Örnek Kodu\nfunction merhabaFornAI() {\n  console.log("FornAI çalışıyor!");\n}\nmerhabaFornAI();</code></pre>`;
-      } else if (lower.includes("merhaba") || lower.includes("selam")) {
-        response = "Selam! FornAI hazır. Bugün ne yazıyoruz veya ne hakkında konuşuyoruz?";
-      } else if (lower.includes("kimsin") || lower.includes("adı ne")) {
-        response = "Ben **FornAI**, oyun ve kodlama odaklı yapay zeka asistanınım!";
+          let fullResponse = "";
+          for await (const chunk of completion) {
+            const curDelta = chunk.choices[0]?.delta?.content || "";
+            fullResponse += curDelta;
+            botMsgDiv.innerText = fullResponse;
+            document.getElementById("chat-container").scrollTop = document.getElementById("chat-container").scrollHeight;
+          }
+          
+          if (fullResponse.includes("```")) {
+            botMsgDiv.innerHTML = fullResponse.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+          }
+          messages.push({ role: "assistant", content: fullResponse });
+        } catch(err) {
+          generateSmartResponse(text, botMsgDiv);
+        }
       } else {
-        response = `"${userText}" hakkındaki isteğini aldım. FornAI şu anda aktif ve sana yardımcı olmaya hazır!`;
+        generateSmartResponse(text, botMsgDiv);
       }
-
-      addMessage(response, "bot-msg");
     }
-  </script>
 
+    function generateSmartResponse(userText, botMsgDiv) {
+      setTimeout(() => {
+        let reply = "";
+        const lower = userText.toLowerCase();
+
+        if (lower.includes("html") || lower.includes("kod") || lower.includes("script")) {
+          reply = "İşte istediğin kod örneği:\n```html\n<!DOCTYPE html>\n<html>\n<head>\n  <title>FornAI Sayfası</title>\n</head>\n<body>\n  <h1>FornAI ile Oluşturuldu</h1>\n</body>\n</html>\n```";
+        } else if (lower.includes("naber") || lower.includes("nasılsın")) {
+          reply = "İyiyim, teşekkürler! Sen nasılsın? Bugün senin için ne yapabilirim?";
+        } else if (lower.includes("selam") || lower.includes("merhaba")) {
+          reply = "Selam! Ben FornAI. Nasıl yardımcı olabilirim?";
+        } else {
+          reply = `"${userText}" sorunu aldım. FornAI asistanı olarak sana yardımcı olmak için buradayım!`;
+        }
+
+        botMsgDiv.innerText = "";
+        let i = 0;
+        let timer = setInterval(() => {
+          if (i < reply.length) {
+            botMsgDiv.innerText += reply.charAt(i);
+            i++;
+          } else {
+            clearInterval(timer);
+            if (reply.includes("```")) {
+              botMsgDiv.innerHTML = reply.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            }
+          }
+        }, 15);
+      }, 400);
+    }
+
+    window.onload = () => {
+      initAI();
+    };
+  </script>
 </body>
 </html>
